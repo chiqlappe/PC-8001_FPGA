@@ -2,14 +2,17 @@
 // PC-8001 on DE0-CV
 // pc8001m.v  "PC-8001 MODOKI"
 //
+// pc8001m https://github.com/radiojunkbox/pc8001m
+//
 // Orignal Auther	: kwhr0 san
 // Modified 		: RJB
-// Modified			: Chiqlappe (*1,*2)
+// Modified			: Chiqlappe
 //
-// 2020/6/13  Ver 1.10  first published
-// 2020/6/27  Ver 1.11  added PCG8200 and Full Dot Color mode
-// 2020/7/12  Ver 1.12  added PSG and Chiqlappe-san modified PCG/FDC *1
-// 2020/8/01  Ver 1.2   added PCG copy & read functions, DMA control, text palette changer *2
+// 2020/06/13  Ver 1.10  first published
+// 2020/06/27  Ver 1.11  added PCG8200 and Full Dot Color mode
+// 2020/07/12  Ver 1.12  added PSG and Chiqlappe-san modified PCG/FDC
+// 2020/08/01  Ver 1.2   added PCG copy & read functions, DMA control, text palette changer
+// 2020/08/08  Ver 1.3	 modified CRTC module
 //
 // This Verilog HDL code is provided "AS IS", with NO WARRANTY.
 //	NON-COMMERCIAL USE ONLY
@@ -47,14 +50,14 @@ module pc8001m (
 	output wire			dac_out
 	);
 		
-	wire		clk;		// clock 14.31818MHz
-	wire		clk2;		// pll clock 28.63636MHz
-	wire		clk3;		// clock  3.57954MHz
-	wire		clk48;	// pll clock 48MHz
-	reg		clk4;		// clock 4MHz
+	wire			clk;		// clock 14.31818MHz
+	wire			clk2;		// pll clock 28.63636MHz
+	wire			clk3;		// clock  3.57954MHz
+	wire			clk48;	// pll clock 48MHz
+	reg			clk4;		// clock 4MHz
 
-	wire		cdin;
-	reg		cinh;
+	wire			cdin;
+	reg			cinh;
 
 	reg [7:0]	portB_out;	// SD Card 8255 PortB out
 	
@@ -72,14 +75,14 @@ module pc8001m (
 	//
 	// Assign SW
 	//
-	wire	SW_OC  = SW[9];	// reduce CPU Wait 
-	wire	SW_ROM = SW[7];	// enable Ext. ROM 6000-7FFFh
-	wire	SW_PCG = SW[5];	// PCG ON
-	wire	SW_MDL = SW[4];	// PCG Model 8100 or 8200/8800
-	wire	SW_FDC = SW[3];	// PCG Full Dot Color Mode
-	wire	SW_CMT = SW[2];	// enable CMT OUT to Sound
-	wire	SW_SCL = SW[1];	// Scan line ON *2
-	wire	SW_GRN = SW[0];	// Green Display
+	wire			SW_OC  = SW[9];	// reduce CPU Wait 
+	wire			SW_ROM = SW[7];	// enable Ext. ROM 6000-7FFFh
+	wire			SW_PCG = SW[5];	// PCG ON
+	wire			SW_MDL = SW[4];	// PCG Model 8100 or 8200/8800
+	wire			SW_FDC = SW[3];	// PCG Full Dot Color Mode
+	wire			SW_CMT = SW[2];	// enable CMT OUT to Sound
+	wire			SW_SCL = SW[1];	// Scan line ON
+	wire			SW_GRN = SW[0];	// Green Display
 	
 	//
 	// RESET
@@ -105,9 +108,9 @@ module pc8001m (
 	//
 	// CPU WAIT
 	//
-	reg [4:0] waitcount = 0;
-	wire 	start, waitreq;
-	assign	waitreq = SW_OC ? start | waitcount < 12 : start | waitcount < 20; // *2
+	reg [4:0]	waitcount = 0;
+	wire			start, waitreq;
+	assign		waitreq = SW_OC ? start | waitcount < 12 : start | waitcount < 18;
 
 	always @(posedge clk) begin
 		if (start) waitcount <= 0;
@@ -118,7 +121,7 @@ module pc8001m (
 	// I/O PORT
 	//
 	wire 			cdata;
-	wire			vsync;	// *1
+	wire			vsync;
 
 	wire port00h = cpu_adr[7:4] == 4'h0;		// keyboard
 	wire port20h = cpu_adr[7:4] == 4'h2;		// uart
@@ -130,9 +133,9 @@ module pc8001m (
 	wire portf0h = cpu_adr[7:4] == 4'hf;
 	wire [7:0] port00data, port20data, port40data, porta0data, portf0data;
 
-	assign port00data = cpu_adr[3:0] == 4'hf ? pcg_rdata : ~keydata;// read PCG data = PORT 0Fh *2
+	assign port00data = cpu_adr[3:0] == 4'hf ? pcg_rdata : ~keydata;// read PCG data = PORT 0Fh
 	assign port20data = uart_data;
-	assign port40data = { 2'b00, vsync, cdata, 1'b1, cdin, 2'b10 };		// *1
+	assign port40data = { 2'b00, vsync, cdata, 1'b1, cdin, 2'b10 };
 	assign portf0data = cpu_adr[3:0] == 4'hd ? portB_out : { 3'b111, sd_dat, 4'b1111 };
 	reg [7:0] input_data;
 
@@ -150,13 +153,13 @@ module pc8001m (
 	//
 	// CPU Bus
 	//
-	assign cpu_data_in = iorq ? input_data : mem_data;
+	assign		cpu_data_in = iorq ? input_data : mem_data;
 
 	//
 	// PS/2 KEYBOARD
 	//
-	wire [3:0] kbd_adr;
-	assign kbd_adr = port00h ? cpu_adr[3:0] : 4'b1111;
+	wire [3:0]	kbd_adr;
+	assign 		kbd_adr = port00h ? cpu_adr[3:0] : 4'b1111;
 	ps2key ps2key (
 		.clk			( clk			),
 		.reset		( reset		),
@@ -169,8 +172,8 @@ module pc8001m (
 	//
 	// RTC
 	//
-	reg [3:0] cin;
-	reg cstb, cclk;
+	reg [3:0] 	cin;
+	reg 			cstb, cclk;
 	always @(posedge clk) begin
 		if (iorq & wr) begin
 			if (cpu_adr[7:4] == 4'h1) cin <= cpu_data_out[3:0];
@@ -189,95 +192,46 @@ module pc8001m (
 		.ind		(			)
 	);
 	
+
 	//
-	// PCG & Full Dot Color
+	// CRTC & DMAC & VIDEO
 	//
-	reg [7:0] pcg_adr8;	// 00h
-	reg [7:0] pcg_data;	// 01h
-	reg [7:0] pcg_cont;	// 02h
-	reg [7:0] pcg_slct;	// 03h
-
-	wire [7:0] pcg_rdata;// PCG read data *2
-	wire [10:0] pcg_adr;
-	wire pcg_we;
-	wire pcg_on;
-	wire pcg_cp;// PCG copy signal *2
-	wire pcg_rd;// PCG read signal *2
-	wire [7:0] pcg_mode;
-
-	reg [2:0] clr_plt[0:7];// Color Palette
-	reg [1:0] fdc_cs;
-	wire scanln_en;// scanline enable signal *2
-	wire [2:0] plt;// current palette *2
-	wire [2:0] bgcol;// background color *2
-	
-	assign pcg_adr = { pcg_cont[2:0], pcg_adr8 };
-	assign pcg_we = pcg_cont[4];
-	assign pcg_cp = pcg_cont[5];// PCG copy signal = PORT 02h bit5 *2
-	assign pcg_rd = pcg_slct[7];// PCG read signal = PORT 03h bit7 *2
-	assign pcg_on = SW_PCG;
-	assign pcg_mode = { SW_FDC, 1'b0, SW_MDL, pcg_slct[4:0] };
-	assign scanln_en = scanln & SW_SCL;// *2
-	assign plt = clr_plt[ {dot_g, dot_r, dot_b} ];// *2
-	assign bgcol = clr_plt[0];// *2
-
-	assign vga_b = SW_GRN ? 4'b0000 : fvga(plt[0], vsafe, lumi, scanln_en, bgcol[0]);// *2
-	assign vga_r = SW_GRN ? 4'b0000 : fvga(plt[1], vsafe, lumi, scanln_en, bgcol[1]);// *2
-	assign vga_g = SW_GRN ? vsafe & lumi & (dot_g | dot_r | dot_b) ? scanln_en ? { 1'b0, dot_g, dot_r, dot_b } : { dot_g, dot_r, dot_b, 1'b1 } 
-																					   : 4'b0001
-								 : fvga(plt[2], vsafe, lumi, scanln_en, bgcol[2]);// *2
+	wire [7:0] 	pcg_rdata;// PCG read data
+	wire [7:0] 	pcg_cont;
+	crtc crtc(
+		.sw			( SW				),
+		.clk			( clk				),
+		.reset		( reset			),
+		.busack		( busack			),
+		.ram_data	( ram_data		),
+		.cpu_adr		( cpu_adr[3:0]	),
+		.cpu_data_out	( cpu_data_out	),
+		.port00h_we	( iorq & wr & start & cpu_adr[7:4] == 4'h0	),
+		.port10h_we	( iorq & wr & start & cpu_adr[7:4] == 4'h1	),
+		.port30h_we	( iorq & wr & start & cpu_adr[7:4] == 4'h3	),
+		.port50h_we	( iorq & wr & start & cpu_adr[7:4] == 4'h5	),
+		.port60h_we	( iorq & wr & start & cpu_adr[7:4] == 4'h6	),
+		.port90h_we	( iorq & wr & start & cpu_adr[7:4] == 4'h9	),
+		.busreq		( busreq			),
+		.ram_adr		( dma_adr		),
+		.vsync		( vsync			),
+		.clk2			( clk2			),
+		.vga_hs		( vga_hs			),
+		.vga_vs		( vga_vs			),
+		.vga_b		( vga_b			),
+		.vga_r		( vga_r			),
+		.vga_g		( vga_g			),
+		.pcg_rdata	( pcg_rdata		),
+		.pcg_cont_out	( pcg_cont		)
+	);
 
 
-
-	// *2
-	function [3:0] fvga;
-		input plt;// palette color bit
-		input vsafe;// valid display area
-		input lumi;// luminance
-		input scanln_en;// scanline
-		input bgcol;// background color bit
-			fvga = lumi ? {plt, plt, plt, plt} : {bgcol, bgcol, bgcol, bgcol};
-			fvga = vsafe ? (scanln_en ? {1'b0, fvga[3:1]} : fvga) : 4'b0000;
-	endfunction
-
-
-	always @(posedge clk) begin
-		if (reset) begin
-			pcg_slct <= 8'h08;// PCG8100 mode
-			clr_plt[0] <= 3'b000;// init palette *2
-			clr_plt[1] <= 3'b001;
-			clr_plt[2] <= 3'b010;
-			clr_plt[3] <= 3'b011;
-			clr_plt[4] <= 3'b100;
-			clr_plt[5] <= 3'b101;
-			clr_plt[6] <= 3'b110;
-			clr_plt[7] <= 3'b111;
-		end
-		else if (iorq & wr) begin// PCG
-			if (port00h) begin
-				if (cpu_adr[3:0] == 4'h0) pcg_data <= cpu_data_out;
-				if (cpu_adr[3:0] == 4'h1) pcg_adr8 <= cpu_data_out;
-				if (cpu_adr[3:0] == 4'h2) pcg_cont <= cpu_data_out;
-				if (cpu_adr[3:0] == 4'h3) pcg_slct <= cpu_data_out;
-			end
-			else if (port90h) begin// Full Dot Color
-				if (cpu_adr[3]) begin
-					fdc_cs <= cpu_data_out[1:0];
-				end
-				else begin
-					clr_plt[cpu_adr[2:0]] <= cpu_data_out[2:0];
-				end
-			end
-		end
-	end
-
-	
 	// 8253 Sound Gen.	
 	wire			pcg8253_wr;
 	wire[2:0]	pcg8253_gate;
 	wire[2:0]	pcg8253_out;
-	assign	pcg8253_wr = iorq & wr & (cpu_adr[7:2] == 6'b0000_11);
-	assign	pcg8253_gate = { pcg_cont[7], pcg_cont[6], pcg_cont[3] };
+	assign		pcg8253_wr = iorq & wr & (cpu_adr[7:2] == 6'b0000_11);
+	assign		pcg8253_gate = { pcg_cont[7], pcg_cont[6], pcg_cont[3] };
 		
 	ltd8253 pcg8253 (
 		.clk		( clk				),
@@ -305,7 +259,6 @@ module pc8001m (
 		.din		( cpu_data_out	),
 		.wr		( psg_wr0		),
 		.sclk		( clk3			),		// clock Source 3.58MHz
-//		.sclk		( clk4			),		// clock Source 4MHz
 		.dout		( psg_reg0		),
 		.out		( psg_out0		)
 	);
@@ -318,7 +271,6 @@ module pc8001m (
 		.din		( cpu_data_out	),
 		.wr		( psg_wr1		),
 		.sclk		( clk3			),		// clock Source 3.58MHz
-//		.sclk		( clk4			),		// clock Source 4MHz
 		.dout		( psg_reg1		),
 		.out		( psg_out1		)
 	);
@@ -327,9 +279,9 @@ module pc8001m (
 	//
 	// SD Card
 	//
-	assign sd_clk = portB_out[0];
-	assign sd_cmd = portB_out[1];
-	assign sd_res = portB_out[2];
+	assign 		sd_clk = portB_out[0];
+	assign 		sd_cmd = portB_out[1];
+	assign 		sd_res = portB_out[2];
 
 	always @(posedge clk) begin
 		if (iorq & wr & ( cpu_adr[7:0] == 8'hfd ) ) begin
@@ -390,17 +342,17 @@ module pc8001m (
 		.tp			( dem_tp			)	
 	);
 
-	assign	cdin = bs[1] ? 1'b1 : dem_out;
-	assign	rxd_in = bs[1] ? rxd : dem_out;
-	assign	txc = bs[1] ? clk_baud[2] : bs[0] ? clk_baud[6] : clk_baud[5];
-	assign	rxc = bs[1] ? clk_baud[2] : bs[0] ? dem_rxc[1] : dem_rxc[0];
+	assign		cdin = bs[1] ? 1'b1 : dem_out;
+	assign		rxd_in = bs[1] ? rxd : dem_out;
+	assign		txc = bs[1] ? clk_baud[2] : bs[0] ? clk_baud[6] : clk_baud[5];
+	assign		rxc = bs[1] ? clk_baud[2] : bs[0] ? dem_rxc[1] : dem_rxc[0];
 		
 	//
 	// OUT30h  BS, CINH, MOTOR
 	// OUT40h  BEEP
 	//
-	reg 	motor;
-	reg	beep_gate;
+	reg 			motor;
+	reg			beep_gate;
 
 	always @(posedge clk) begin
 		if ( iorq & wr) begin
@@ -435,8 +387,8 @@ module pc8001m (
 						 { 3'b000, audio_out[3], 7'b0000000 };
    
 	// delta-sigma Mod.
-	assign dac_sum = { 1'b0, dac_in } + { 1'b0, dac_fbk };
-	assign dac_out = dac_bit;
+	assign 		dac_sum = { 1'b0, dac_in } + { 1'b0, dac_fbk };
+	assign 		dac_out = dac_bit;
 
 	always @( posedge clk) begin
 		dac_fbk <= dac_sum[10:0];
@@ -458,7 +410,7 @@ module pc8001m (
 		.wr			( wr				),
 		.intreq		( 1'b0			),
 		.nmireq		( 1'b0			),
-		.busreq		( busreq			), 
+		.busreq		( busreq			),
 		.busack_out	( busack			),
 		.waitreq		( waitreq		),
 		.start		( start			),
@@ -467,42 +419,6 @@ module pc8001m (
 	);
 	
 
-	//
-	// CRTC & DMAC & VIDEO
-	//
-	crtc crtc(
-		.clk			( clk				),
-		.y_out		( 					),
-		.c_out		( 					),
-		.port30h_we	( iorq & wr & start & cpu_adr[7:4] == 4'h3	), 
-		.crtc_we		( iorq & wr & start & cpu_adr[7:4] == 4'h5	), 
-		.adr			( cpu_adr[0]	),
-		.data			( cpu_data_out	),
-		.busreq		( busreq			),
-		.busack		( busack			),
-		.ram_adr		( dma_adr		),
-		.ram_data	( ram_data		),
-		.clk2			( clk2			),
-		.bw_out		( bw_out			),
-		.vga_hs		( vga_hs			),
-		.vga_vs		( vga_vs			),	
-		.dot_b		( dot_b			),// *2
-		.dot_r		( dot_r			),// *2
-		.dot_g		( dot_g			),// *2
-		.lumi			( lumi			),// *2
-		.vsafe		( vsafe			),// *2
-		.scanln		( scanln			),// *2
-		.pcg_adr		( pcg_adr		),
-		.pcg_data	( pcg_data		),
-		.pcg_we		( pcg_we			),
-		.pcg_cp		( pcg_cp			),// *2
-		.pcg_rd		( pcg_rd			),// *2
-		.pcg_mode	( pcg_mode		),
-		.pcg_on		( pcg_on			),
-		.fdc_cs		( fdc_cs			),
-		.pcg_rdata	( pcg_rdata		),// *2
-		.vsync		( vsync			)// *1
-	);
 
 	//
 	// Memory Selector
@@ -551,8 +467,8 @@ module pc8001m (
 	//
 	// SRAM
 	//
-	assign ram_adr = busack ? dma_adr[15:0] : cpu_adr;
-	assign ram_we = busack ? 1'b0 : ( mreq & wr & ~start & ( cpu_adr[15] | we_ext_ram));
+	assign 		ram_adr = busack ? dma_adr[15:0] : cpu_adr;
+	assign 		ram_we = busack ? 1'b0 : ( mreq & wr & ~start & ( cpu_adr[15] | we_ext_ram));
 	
 	sram sram (
 		.address	( ram_adr			),
@@ -645,7 +561,7 @@ module pc8001m (
 	reg [2:0]	cnt;
 	assign 		clk = cnt[0];			// 14.31818MHz
 	assign 		clk3 = cnt[2];			//  3.57954MHz
-	always @ ( posedge clk2) begin
+	always @( posedge clk2) begin
 		cnt <= cnt + 3'b01;
 	end
 	
