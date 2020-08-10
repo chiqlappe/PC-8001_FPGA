@@ -1,6 +1,6 @@
 //
 // CRTC
-// version 1.3
+// version 1.31
 //
 // pc8001m https://github.com/radiojunkbox/pc8001m
 //
@@ -18,6 +18,8 @@
 //  + color pallette
 // 2020/08/07	Ver 1.3
 //  + DMAC start address & terminal count regs
+// 2020/08/10	Ver 1.31
+//  * fix reverse screen bug
 //
 // This Verilog HDL code is provided "AS IS", with NO WARRANTY.
 //	NON-COMMERCIAL USE ONLY
@@ -289,26 +291,34 @@ module crtc(
 	reg [15:0]	dma_start = DEF_VRAM_ADR;
 	reg [14:0]	dma_size = DEF_DMA_SIZE;
 	reg [15:0]	dma_cnt = 0;
-
+	reg			dma_wait = 0;
+	
 	parameter DEF_VRAM_ADR = 16'hf300;
 	parameter DEF_DMA_SIZE = 25 * 120 - 1;// = 2999
 	parameter VRAM_ROW = 120;
 	parameter DMA_DELAY = 1600;
 
 	always @(posedge clk) begin
-		if (dma_reset) begin
-			dma_dst_adr <= 0;
-			dma_cnt <= 0;
-			state <= 0;
-		end
 
+		if (dma_reset) begin
+			state <= 0;
+			dma_wait <= 1;
+		end
+			
 		case (state)
 			0:begin
-				if (dotcnt == END_H) begin
-					if (hcnt == CHCNT_RESET_V | (chlast & hcnt < (END_V - 1))) begin// omit last v-line
-						state <= 1;
-						dma_dst_adr <= 0;
-						dma_delay_cnt <= DMA_DELAY;
+				if (dma_wait & hcnt == 0) begin
+					dma_wait <= 0;
+					dma_cnt <= 0;
+					dma_src_adr <= dma_start;
+				end
+				else begin
+					if (dotcnt == END_H) begin
+						if (hcnt == CHCNT_RESET_V | (chlast & hcnt < (END_V - 1))) begin// omit last v-line
+							state <= 1;
+							dma_dst_adr <= 0;
+							dma_delay_cnt <= DMA_DELAY;
+						end
 					end
 				end
 			end
@@ -329,10 +339,23 @@ module crtc(
 				end
 				else dma_cnt <= dma_cnt + 1;
 			end
-			default:begin
+			4:begin
 				dma_delay_cnt <= dma_delay_cnt - 1;
 				if (dma_delay_cnt == 0) state <= 0;
 			end
+
+/*
+			9:begin
+				if (hcnt == 0) begin
+					state <= 0;
+					//dma_dst_adr <= 0;
+					dma_cnt <= 0;
+					dma_src_adr <= dma_start;
+				end
+			end
+*/			
+			default:;
+			
 		endcase
 	end
 
@@ -342,6 +365,8 @@ module crtc(
 
 	assign		ram_adr = dma_src_adr;
 	assign		busreq = (state != 0 & dma_on);
+//	assign		busreq = (state != 0 & state != 9 & dma_on);
+
 	assign		rowbuf_we = (state == 3);
 	assign		rowbuf_adr = dotcnt[2] ? text_adr : { atr_adr, dotcnt[1] };
 
