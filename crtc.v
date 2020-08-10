@@ -344,16 +344,6 @@ module crtc(
 				if (dma_delay_cnt == 0) state <= 0;
 			end
 
-/*
-			9:begin
-				if (hcnt == 0) begin
-					state <= 0;
-					//dma_dst_adr <= 0;
-					dma_cnt <= 0;
-					dma_src_adr <= dma_start;
-				end
-			end
-*/			
 			default:;
 			
 		endcase
@@ -365,8 +355,6 @@ module crtc(
 
 	assign		ram_adr = dma_src_adr;
 	assign		busreq = (state != 0 & dma_on);
-//	assign		busreq = (state != 0 & state != 9 & dma_on);
-
 	assign		rowbuf_we = (state == 3);
 	assign		rowbuf_adr = dotcnt[2] ? text_adr : { atr_adr, dotcnt[1] };
 
